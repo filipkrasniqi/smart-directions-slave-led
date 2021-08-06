@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
   std::map<int, std::string> mapColors;
   mapColors[0]="red";
   mapColors[1]="green";
-  mapColors[2]="blue";
+  //mapColors[2]="blue";
   //mapColors[3]="orange";
 
   std::map<int, std::string> mapDirections;

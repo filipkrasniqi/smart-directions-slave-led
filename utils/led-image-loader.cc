@@ -267,7 +267,7 @@ static int usage(const char *progname) {
 void showImage(FileInfo *file_img, RGBMatrix *matrix, FrameCanvas *offscreen_canvas, tmillis_t executionTime) {
   file_img->params.wait_ms = executionTime;
   file_img->params.anim_duration_ms = executionTime;
-  file_img->params.loops = ceil(executionTime/DURATION_IMG);
+  file_img->params.loops = 1;//ceil(executionTime/DURATION_IMG);
   DisplayAnimation(file_img, matrix, offscreen_canvas, vsync_multiple);
   matrix->Clear();
 }
@@ -301,6 +301,11 @@ std::vector<std::string> split(const std::string& s, char seperator)
 }
 
 int main(int argc, char *argv[]) {
+  argv[0] = "./led-image-loader";
+  argv[1] = "--led-gpio-mapping=adafruit-hat";
+  argc = 2;
+  std::string prefix("/home/pi/led-images/");
+  std::string prefix_file = prefix + std::string("arrow-");
   Magick::InitializeMagick(*argv);
 
   RGBMatrix::Options matrix_options;
@@ -327,13 +332,10 @@ int main(int argc, char *argv[]) {
 
   // Set defaults.
   ImageParams img_param;
-  //for (int i = 0; i < argc; ++i) {
-    //filename_params[argv[i]] = img_param;
-  //}
     
   std::map<int, std::string> mapColors;
   mapColors[0]="red";
-  mapColors[1]="green";
+  //mapColors[1]="green";
   //mapColors[2]="blue";
   //mapColors[3]="orange";
 
@@ -342,8 +344,8 @@ int main(int argc, char *argv[]) {
   mapDirections[1] = "right";
   mapDirections[2] = "bottom";
   mapDirections[3] = "left";
-  mapDirections[4] = "engage";
-  mapDirections[5] = "destination";
+  mapDirections[4] = "destination";
+  mapDirections[5] = "start";
 
   int num_colors=mapColors.size();
   int num_directions=mapDirections.size();
@@ -356,18 +358,8 @@ int main(int argc, char *argv[]) {
   const char *stream_output = NULL;
   runtime_opt.do_gpio_init = (stream_output == NULL);
   RGBMatrix *matrix = CreateMatrixFromOptions(matrix_options, runtime_opt);
-  if (matrix == NULL)
+  if(matrix == NULL) {
     return 1;
-
-  if (large_display) {
-    // Mapping the coordinates of a 32x128 display mapped to a square of 64x64,
-    // or any other U-shape.
-    matrix->ApplyStaticTransformer(rgb_matrix::UArrangementTransformer(
-                                     matrix_options.parallel));
-  }
-
-  if (angle >= -360) {
-    matrix->ApplyStaticTransformer(rgb_matrix::RotateTransformer(angle));
   }
 
   FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
@@ -381,7 +373,7 @@ int main(int argc, char *argv[]) {
       FileInfo* file_img;
       color = mapColors.at(c);
       direction = mapDirections.at(d);
-      file_name_string = std::string("/home/pi/smart-directions-slave/assets/") + std::string("arrow-") + color + std::string("-") + direction + std::string(".gif");
+      file_name_string = prefix_file + color + std::string("-") + direction + std::string(".gif");
     
       // These parameters are needed once we do scrolling.
       const bool fill_width = false;
@@ -456,7 +448,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::string prefix_file("/home/pi/smart-directions-slave/assets/arrow-");
   std::string suffix_file(".gif");
 
 	int client, server;
@@ -517,12 +508,22 @@ int main(int argc, char *argv[]) {
               cout << "KEY: " << key << endl;
               auto iter = dictionaryFileImages.find(key);
               if(iter != dictionaryFileImages.end()) {
+		cout << "Showing image" << key << endl;
                 FileInfo* file_img = iter->second;
                 showImage(file_img, matrix, offscreen_canvas, stoi(msgs[2]));
+                delete matrix;
+                matrix = CreateMatrixFromOptions(matrix_options, runtime_opt);
+                
+                if(matrix == NULL) {
+                  cout << key << "ERROR: matrix is null" << endl;
+                  return 1;
+                }
+
+                offscreen_canvas = matrix->CreateFrameCanvas();
               } else {
-                cout << "Not present" << endl;
+                cout << key << " Not present" << endl;
               }
-              SleepMillis(5000);
+              //SleepMillis(5000);
           }
           cout << "\nDisconnected..." << endl;
           isExit = false;
